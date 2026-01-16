@@ -1,0 +1,11 @@
+torch
+torchaudio
+transformers
+sounddevice
+numpy
+protobuf
+sentencepiece
+onnxruntime
+scipy
+librosa
+huggingface_hub
