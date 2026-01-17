@@ -11,10 +11,21 @@ import shutil
 import warnings
 import subprocess
 import imageio_ffmpeg
+import soundfile as sf
 from typing import Optional
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
+
+# Force imageio-ffmpeg to be in PATH for librosa/whisper
+try:
+    ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+    ffmpeg_dir = os.path.dirname(ffmpeg_bin)
+    if ffmpeg_dir not in os.environ["PATH"]:
+        os.environ["PATH"] += os.pathsep + ffmpeg_dir
+    print(f"FFmpeg path injected: {ffmpeg_dir}")
+except Exception as e:
+    print(f"Warning: Could not inject FFmpeg path: {e}")
 
 app = FastAPI(title="Indic STT & Translate")
 
@@ -76,10 +87,14 @@ def translate_text(text, src_lang, tgt_lang):
         # NLLB-200 usage
         tokenizer_trans.src_lang = src_code
         inputs = tokenizer_trans(text, return_tensors="pt")
+        
+        # Get target language token ID
+        tgt_id = tokenizer_trans.convert_tokens_to_ids(tgt_code)
+        
         with torch.no_grad():
             generated_tokens = model_trans.generate(
                 **inputs, 
-                forced_bos_token_id=tokenizer_trans.lang_code_to_id[tgt_code],
+                forced_bos_token_id=tgt_id,
                 max_length=128
             )
         return tokenizer_trans.batch_decode(generated_tokens, skip_special_tokens=True)[0]
@@ -376,15 +391,17 @@ async def transcribe(audio: UploadFile = File(...), lang: str = Form(...), targe
             ffmpeg_path, "-y", "-i", temp_filename, 
             "-ar", str(SAMPLE_RATE), "-ac", "1", "-f", "wav", wav_filename
         ], check=True, capture_output=True)
-        
-        y, sr = librosa.load(wav_filename, sr=SAMPLE_RATE)
+        # Load the converted wav file using soundfile (no FFmpeg required for WAV)
+        y, sr = sf.read(wav_filename)
         if len(y) == 0: return {"text": ""}
 
         if lang == "en":
-            res = model_stt_en(wav_filename)
+            # Pass numpy array to Whisper to avoid filename-based FFmpeg triggers
+            res = model_stt_en(y)
             text = res["text"].strip()
         else:
-            input_tensor = torch.from_numpy(y).unsqueeze(0)
+            # Use Indic-Conformer for Indian languages
+            input_tensor = torch.from_numpy(y).float().unsqueeze(0)
             with torch.no_grad():
                 transcription = model_stt_indic(input_tensor, lang=lang)
             text = transcription.replace('▁', ' ').strip() if isinstance(transcription, str) else ""

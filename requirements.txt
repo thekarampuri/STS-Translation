@@ -17,3 +17,4 @@ imageio-ffmpeg
 sacremoses
 indic-nlp-library
 openai-whisper
+soundfile
