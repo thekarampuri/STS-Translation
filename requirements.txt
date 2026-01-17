@@ -9,3 +9,11 @@ onnxruntime
 scipy
 librosa
 huggingface_hub
+fastapi
+uvicorn
+python-multipart
+jinja2
+imageio-ffmpeg
+sacremoses
+indic-nlp-library
+openai-whisper
