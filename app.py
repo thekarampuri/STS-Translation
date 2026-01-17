@@ -70,6 +70,10 @@ async def load_models():
     tokenizer_trans = AutoTokenizer.from_pretrained(MT_MODEL_ID)
     model_trans = AutoModelForSeq2SeqLM.from_pretrained(MT_MODEL_ID)
     model_trans.eval()
+    # Apply dynamic quantization for CPU speedup
+    model_trans = torch.quantization.quantize_dynamic(
+        model_trans, {torch.nn.Linear}, dtype=torch.qint8
+    )
     
     print("All models loaded successfully.")
 
@@ -91,11 +95,13 @@ def translate_text(text, src_lang, tgt_lang):
         # Get target language token ID
         tgt_id = tokenizer_trans.convert_tokens_to_ids(tgt_code)
         
-        with torch.no_grad():
+        with torch.inference_mode():
             generated_tokens = model_trans.generate(
                 **inputs, 
                 forced_bos_token_id=tgt_id,
-                max_length=128
+                max_length=128,
+                num_beams=1, # Faster greedy decoding
+                do_sample=False
             )
         return tokenizer_trans.batch_decode(generated_tokens, skip_special_tokens=True)[0]
             
@@ -351,7 +357,9 @@ async def get_index(request: Request):
             async function sendCurrentAudio() {
                 if (audioChunks.length === 0) return;
                 
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                // Keep only the last 6 chunks (~12 seconds) for fast processing while maintaining context
+                const recentChunks = audioChunks.slice(-6);
+                const audioBlob = new Blob(recentChunks, { type: 'audio/webm' });
                 const formData = new FormData();
                 formData.append('audio', audioBlob);
                 formData.append('lang', langSelect.value);
@@ -362,6 +370,8 @@ async def get_index(request: Request):
                     const data = await response.json();
                     
                     if (data.text) {
+                        // For a better user experience, we could stitch text, but for now 
+                        // showing the current window transcription is more accurate and much faster.
                         transcriptionArea.innerText = data.text;
                         if (data.translated_text) {
                             translationArea.style.display = "block";
@@ -402,7 +412,7 @@ async def transcribe(audio: UploadFile = File(...), lang: str = Form(...), targe
         else:
             # Use Indic-Conformer for Indian languages
             input_tensor = torch.from_numpy(y).float().unsqueeze(0)
-            with torch.no_grad():
+            with torch.inference_mode():
                 transcription = model_stt_indic(input_tensor, lang=lang)
             text = transcription.replace('▁', ' ').strip() if isinstance(transcription, str) else ""
         
