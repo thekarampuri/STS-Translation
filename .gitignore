@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv
+venv/
+ENV/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+temp_*
+*.log
+*.zip
+Indic-TTS/.git
+Indic-TTS/inference/checkpoints/*/fastpitch/*.pth
+Indic-TTS/inference/checkpoints/*/hifigan/*.pth
+# Keep configs but ignore large models if needed. 
+# However, user unzipped them so they might want them committed or not.
+# Given they are >1GB, they should probably be ignored.
+
+# Large Models
+*.pth
+*.nemo
+*.bin
+*.pt
+*.onnx
