@@ -102,6 +102,10 @@ async def load_models():
 
     print("--- ALL MODELS INITIALIZED ---")
 
+@app.get("/tts_info")
+async def get_tts_info():
+    return {"supported_languages": tts_engine.get_supported_languages()}
+
 def translate_text(text, src_lang, tgt_lang):
     if not text or src_lang == tgt_lang:
         return text
@@ -383,6 +387,32 @@ async def get_index(request: Request):
             const translationText = document.getElementById('translationText');
             const statusArea = document.getElementById('status');
 
+            async function updateTTSStatus() {
+                try {
+                    const response = await fetch('/tts_info');
+                    const data = await response.json();
+                    const supported = data.supported_languages || [];
+                    
+                    const options = targetSelect.options;
+                    for (let i = 0; i < options.length; i++) {
+                        const val = options[i].value;
+                        if (val && val !== "") {
+                            if (!supported.includes(val)) {
+                                options[i].text = options[i].text.split(' (')[0] + " (No Voice)";
+                                options[i].style.color = "#64748b";
+                            } else {
+                                options[i].text = options[i].text.split(' (')[0];
+                                options[i].style.color = "white";
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch TTS info", err);
+                }
+            }
+
+            updateTTSStatus();
+
             recordBtn.addEventListener('click', async () => {
                 if (mediaRecorder && mediaRecorder.state === "recording") {
                     stopRecording();
@@ -401,7 +431,7 @@ async def get_index(request: Request):
                         }
                     };
 
-                    mediaRecorder.start(2000); 
+                    mediaRecorder.start(1000); 
                     
                     recordBtn.classList.add('recording');
                     btnText.innerText = "Stop Recording";
@@ -481,8 +511,10 @@ async def get_index(request: Request):
                         ttsAudio = new Audio("data:audio/wav;base64," + data.audio);
                         ttsAudio.play();
                         statusArea.innerText = "Playing Speech...";
+                        speakBtn.disabled = false;
                     } else {
-                        statusArea.innerText = "TTS Error: " + (data.error || "Unknown");
+                        statusArea.innerText = "TTS Not Supported for this language";
+                        speakBtn.disabled = true;
                     }
                 } catch (err) {
                     console.error(err);
@@ -527,10 +559,12 @@ async def transcribe(audio: UploadFile = File(...), lang: str = Form(...), targe
             shutil.copyfileobj(audio.file, buffer)
         
         ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+        # Fast conversion with high speed preset and no logging for lower latency
         subprocess.run([
-            ffmpeg_path, "-y", "-i", temp_filename, 
+            ffmpeg_path, "-y", "-loglevel", "quiet", "-i", temp_filename, 
             "-ar", str(SAMPLE_RATE), "-ac", "1", "-f", "wav", wav_filename
-        ], check=True, capture_output=True)
+        ], check=True)
+        
         # Load the converted wav file using soundfile
         y, sr = sf.read(wav_filename)
         if len(y) == 0: return {"text": ""}

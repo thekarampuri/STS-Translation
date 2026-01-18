@@ -43,21 +43,28 @@ class TTSEngine:
         print(f"Successfully loaded {lang} Synthesizer.")
         
         # Re-initialize the engine with updated models
-        self.engine = TextToSpeechEngine(self.models, allow_transliteration=True)
+        self.engine = TextToSpeechEngine(self.models, allow_transliteration=False)
         print(f"Successfully initialized TextToSpeechEngine for {lang}.")
+
+    def get_supported_languages(self):
+        """Returns a list of languages that have checkpoints available."""
+        if not os.path.exists(self.checkpoint_root):
+            return []
+        return [d for d in os.listdir(self.checkpoint_root) 
+                if os.path.isdir(os.path.join(self.checkpoint_root, d))]
 
     def synthesize(self, text: str, lang: str, gender: str = "male") -> Optional[np.ndarray]:
         """
         Synthesize text to audio.
         Returns: numpy array of the audio.
         """
-        if lang not in self.models:
-            self.load_language(lang)
-        
-        if not self.engine:
-            self.engine = TextToSpeechEngine(self.models, allow_transliteration=True)
-
         try:
+            if lang not in self.models:
+                self.load_language(lang)
+            
+            if not self.engine:
+                self.engine = TextToSpeechEngine(self.models, allow_transliteration=False)
+
             # Indic-TTS inference/src/inference.py uses Speaker Names like 'male' or 'female'
             # as defined in the speakers.pth or models.
             wav = self.engine.infer_from_text(
