@@ -43,7 +43,7 @@ class TTSEngine:
         print(f"Successfully loaded {lang} Synthesizer.")
         
         # Re-initialize the engine with updated models
-        self.engine = TextToSpeechEngine(self.models, allow_transliteration=False)
+        self.engine = TextToSpeechEngine(self.models, allow_transliteration=False, enable_denoiser=False)
         print(f"Successfully initialized TextToSpeechEngine for {lang}.")
 
     def get_supported_languages(self):
@@ -63,7 +63,7 @@ class TTSEngine:
                 self.load_language(lang)
             
             if not self.engine:
-                self.engine = TextToSpeechEngine(self.models, allow_transliteration=False)
+                self.engine = TextToSpeechEngine(self.models, allow_transliteration=False, enable_denoiser=False)
 
             # Indic-TTS inference/src/inference.py uses Speaker Names like 'male' or 'female'
             # as defined in the speakers.pth or models.
