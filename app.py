@@ -34,7 +34,7 @@ app = FastAPI(title="Indic STT & Translate")
 
 # Config
 MODEL_ID = "ai4bharat/indic-conformer-600m-multilingual"
-MT_MODEL_ID = "facebook/nllb-200-distilled-600M"
+MT_MODEL_ID = "./nllb-safe" # Use local converted model
 SAMPLE_RATE = 16000
 
 # Global model containers
@@ -65,29 +65,34 @@ async def load_models():
     print(f"Loading Indic STT model from {MODEL_ID}...")
     try:
         model_stt_indic = AutoModel.from_pretrained(MODEL_ID, trust_remote_code=True)
+        if torch.cuda.is_available():
+            model_stt_indic = model_stt_indic.to("cuda")
         model_stt_indic.eval()
-        print("Indic STT model loaded successfully.")
+        print(f"Indic STT model loaded on {'cuda' if torch.cuda.is_available() else 'cpu'}.")
     except Exception as e:
         print(f"ERROR loading Indic STT model: {e}")
     
     print(f"Loading English STT model (Whisper Tiny)...")
     try:
-        model_stt_en = pipeline("automatic-speech-recognition", model="openai/whisper-tiny")
-        print("English STT model loaded successfully.")
+        device = 0 if torch.cuda.is_available() else -1
+        model_stt_en = pipeline("automatic-speech-recognition", model="openai/whisper-tiny", device=device)
+        print(f"English STT model loaded on {'cuda' if device == 0 else 'cpu'}.")
     except Exception as e:
         print(f"ERROR loading English STT model: {e}")
     
     print(f"Loading Translation model (NLLB-200 600M)...")
     try:
         tokenizer_trans = AutoTokenizer.from_pretrained(MT_MODEL_ID)
-        model_trans = AutoModelForSeq2SeqLM.from_pretrained(MT_MODEL_ID)
-        model_trans.eval()
-        # Apply dynamic quantization for CPU speedup
-        print("Applying dynamic quantization to NLLB...")
-        model_trans = torch.quantization.quantize_dynamic(
-            model_trans, {torch.nn.Linear}, dtype=torch.qint8
+        model_trans = AutoModelForSeq2SeqLM.from_pretrained(
+            MT_MODEL_ID,
+            trust_remote_code=True,
+            use_safetensors=True,
+            low_cpu_mem_usage=False
         )
-        print("Translation model loaded successfully.")
+        if torch.cuda.is_available():
+            model_trans = model_trans.to("cuda")
+        model_trans.eval()
+        print(f"Translation model loaded on {'cuda' if torch.cuda.is_available() else 'cpu'}.")
     except Exception as e:
         print(f"ERROR loading Translation model: {e}")
     
@@ -120,6 +125,8 @@ def translate_text(text, src_lang, tgt_lang):
         # NLLB-200 usage
         tokenizer_trans.src_lang = src_code
         inputs = tokenizer_trans(text, return_tensors="pt")
+        if torch.cuda.is_available():
+            inputs = {k: v.to("cuda") for k, v in inputs.items()}
         
         # Get target language token ID
         tgt_id = tokenizer_trans.convert_tokens_to_ids(tgt_code)
@@ -574,6 +581,8 @@ async def transcribe(audio: UploadFile = File(...), lang: str = Form(...), targe
             text = res["text"].strip()
         else:
             input_tensor = torch.from_numpy(y).float().unsqueeze(0)
+            if torch.cuda.is_available():
+                input_tensor = input_tensor.to("cuda")
             with torch.inference_mode():
                 transcription = model_stt_indic(input_tensor, lang=lang)
             text = transcription.replace('▁', ' ').strip() if isinstance(transcription, str) else ""

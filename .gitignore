@@ -28,3 +28,6 @@ Indic-TTS/inference/checkpoints/*/hifigan/*.pth
 *.bin
 *.pt
 *.onnx
+*.safetensors
+nllb-safe/
+nllb_download/
