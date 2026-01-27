@@ -3,7 +3,7 @@ uvicorn
 python-multipart
 jinja2
 torch
-numpy==1.23.5
+numpy>=1.23.5
 transformers
 librosa
 imageio-ffmpeg
@@ -14,7 +14,7 @@ aksharamukha
 scipy
 asteroid
 onnxruntime
-TTS
+# TTS
 pytorch_lightning
 scikit-learn
 seaborn

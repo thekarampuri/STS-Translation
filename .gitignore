@@ -15,7 +15,7 @@ Thumbs.db
 temp_*
 *.log
 *.zip
-Indic-TTS/.git
+
 Indic-TTS/inference/checkpoints/*/fastpitch/*.pth
 Indic-TTS/inference/checkpoints/*/hifigan/*.pth
 # Keep configs but ignore large models if needed. 
