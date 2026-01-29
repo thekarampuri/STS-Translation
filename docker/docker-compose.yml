@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  sts-app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../models:/app/models
+    environment:
+      - TTS_CHECKPOINTS_DIR=/app/models/indic-tts/checkpoints
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
