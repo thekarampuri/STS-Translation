@@ -159,7 +159,13 @@ class TextToSpeechEngine:
 
             # Run Inference. TODO: Support for batch inference
             wav_chunk = self.models[lang].tts(
-                paragraph, speaker_name=speaker_name, style_wav=""
+                paragraph, 
+                speaker_name=speaker_name, 
+                style_wav="",
+                # Prosody improvements
+                do_trim_silence=False, 
+                pitch_fmin=50,
+                pitch_fmax=300
             )
             wav_chunk = self.postprocess_audio(wav_chunk, primary_lang, speaker_name)
 

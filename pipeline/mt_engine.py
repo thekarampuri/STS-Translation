@@ -8,9 +8,20 @@ from core.model_manager import model_manager
 logger = logging.getLogger(__name__)
 
 LANG_CODES = {
-    "hi": "hin_Deva", "mr": "mar_Deva", "te": "tel_Telu", "ta": "tam_Taml",
-    "ml": "mal_Mlym", "kn": "kan_Knda", "gu": "guj_Gujr", "bn": "ben_Beng",
-    "as": "asm_Beng", "pa": "pan_Guru", "en": "eng_Latn"
+    # FLORES-200 Language Codes
+    "en": "eng_Latn",
+    "hi": "hin_Deva",
+    "mr": "mar_Deva",
+    "te": "tel_Telu",
+    "ta": "tam_Taml",
+    "kan": "kan_Knda", "kn": "kan_Knda", # Aliases
+    "mal": "mal_Mlym", "ml": "mal_Mlym",
+    "guj": "guj_Gujr", "gu": "guj_Gujr",
+    "ben": "ben_Beng", "bn": "ben_Beng",
+    "asm": "asm_Beng", "as": "asm_Beng",
+    "pan": "pan_Guru", "pa": "pan_Guru",
+    "ori": "ory_Orya", "or": "ory_Orya",
+    "ur": "urd_Arab",
 }
 
 class MTEngine:
