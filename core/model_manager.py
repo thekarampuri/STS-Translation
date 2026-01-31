@@ -30,11 +30,14 @@ class ModelManager:
         logger.info(f"Loading model: {key}")
         try:
             model = loader_func(*args, **kwargs)
+            if model is None:
+                raise ValueError(f"Loader/Validation failed for {key}")
+                
             self.models[key] = model
             logger.info(f"Model {key} loaded successfully.")
             return model
         except Exception as e:
-            logger.error(f"Failed to load model {key}: {e}")
+            logger.error(f"CRITICAL: Failed to load model {key}: {e}")
             raise e
 
     def get_model(self, key: str) -> Optional[Any]:

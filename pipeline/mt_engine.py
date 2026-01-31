@@ -7,21 +7,19 @@ from core.model_manager import model_manager
 
 logger = logging.getLogger(__name__)
 
-LANG_CODES = {
-    # FLORES-200 Language Codes
+
+# 2. Load NLLB safely (NO meta tensors) + 4. Correct language routing
+NLLB_LANG_MAP = {
     "en": "eng_Latn",
     "hi": "hin_Deva",
-    "mr": "mar_Deva",
-    "te": "tel_Telu",
     "ta": "tam_Taml",
-    "kan": "kan_Knda", "kn": "kan_Knda", # Aliases
-    "mal": "mal_Mlym", "ml": "mal_Mlym",
-    "guj": "guj_Gujr", "gu": "guj_Gujr",
-    "ben": "ben_Beng", "bn": "ben_Beng",
-    "asm": "asm_Beng", "as": "asm_Beng",
-    "pan": "pan_Guru", "pa": "pan_Guru",
-    "ori": "ory_Orya", "or": "ory_Orya",
-    "ur": "urd_Arab",
+    "te": "tel_Telu",
+    "kn": "kan_Knda",
+    "ml": "mal_Mlym",
+    "mr": "mar_Deva",
+    "bn": "ben_Beng",
+    "gu": "guj_Gujr",
+    "pa": "pan_Guru"
 }
 
 class MTEngine:
@@ -30,16 +28,23 @@ class MTEngine:
         
     def load_model(self):
         logger.info(f"Loading Translation model from {settings.MT_MODEL_PATH}...")
-        self.tokenizer = AutoTokenizer.from_pretrained(settings.MT_MODEL_PATH)
         
+        # 3. Fix tokenizer regex (MANDATORY) - NOTE: Removed fix_mistral_regex=True as it crashes NLLB tokenizer with TypeError
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            settings.MT_MODEL_PATH
+        )
+        
+        # 1. Use the correct model class + 2. Load NLLB safely
         model = AutoModelForSeq2SeqLM.from_pretrained(
             settings.MT_MODEL_PATH,
-            trust_remote_code=True,
-            use_safetensors=True,
+            torch_dtype=torch.float32,
             low_cpu_mem_usage=False
         )
+        
+        # 6. GPU handling (safe)
         if device_manager.is_cuda():
             model = model.to("cuda")
+            
         model.eval()
         return model
 
@@ -47,14 +52,15 @@ class MTEngine:
         if not text or src_lang == tgt_lang:
             return text
             
-        src_code = LANG_CODES.get(src_lang)
-        tgt_code = LANG_CODES.get(tgt_lang)
+        src_code = NLLB_LANG_MAP.get(src_lang)
+        tgt_code = NLLB_LANG_MAP.get(tgt_lang)
         
         if not src_code or not tgt_code:
             logger.warning(f"Unsupported language pair: {src_lang} -> {tgt_lang}")
-            return text
+            return f"{text} (Unsupported Language)"
 
         try:
+            # 5. Fix ModelManager behavior (Load once, fail fast)
             model = model_manager.load_model("mt_model", self.load_model)
             
             self.tokenizer.src_lang = src_code
@@ -76,6 +82,6 @@ class MTEngine:
             return self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]
         except Exception as e:
             logger.error(f"Translation Error: {e}")
-            return f"{text} (Translation failed)"
+            raise e  # Fail fast
 
 mt_engine = MTEngine()
