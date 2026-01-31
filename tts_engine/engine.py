@@ -29,9 +29,8 @@ class TTSEngine:
         lang_path = os.path.join(self.checkpoint_root, lang)
         if not os.path.exists(lang_path):
             logger.error(f"Model for language '{lang}' not found at {lang_path}")
-            return
-            # raise FileNotFoundError(f"Model for language '{lang}' not found at {lang_path}")
-
+            raise FileNotFoundError(f"Model for language '{lang}' not found at {lang_path}")
+            
         logger.info(f"Loading TTS model for {lang} from {lang_path}...")
         
         # Resolve config paths dynamically

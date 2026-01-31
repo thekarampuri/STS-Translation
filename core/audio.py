@@ -94,5 +94,7 @@ def convert_webm_to_wav(webm_bytes: bytes, sample_rate: int = 16000, retries=2) 
             if p and os.path.exists(p):
                 try:
                     os.remove(p)
-                except:
-                    pass
+                except OSError as e:
+                     logger.warning(f"Failed to remove temp file {p}: {e}")
+                except Exception as e:
+                     logger.warning(f"Unexpected error removing temp file {p}: {e}")

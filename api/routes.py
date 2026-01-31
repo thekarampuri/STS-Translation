@@ -24,7 +24,7 @@ async def transcribe(
     target_lang: Optional[str] = Form(None)
 ):
     audio_bytes = await audio.read()
-    result = orchestrator.process_speech(audio_bytes, lang, target_lang)
+    result = await orchestrator.process_speech(audio_bytes, lang, target_lang)
     if "error" in result:
         return TranscriptionResponse(text="", error=result["error"])
         
@@ -40,7 +40,7 @@ async def tts(
     gender: str = Form("male")
 ):
     try:
-        audio_b64 = orchestrator.generate_tts(text, lang, gender)
+        audio_b64 = await orchestrator.generate_tts(text, lang, gender)
         if audio_b64 is None:
             return TTSResponse(error="TTS generation failed")
             
